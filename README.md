@@ -3,9 +3,6 @@ Blockchain + Cloud project for counterfeit drug verification and medical record 
 @"
 
 Monorepo for our Cloud Architecture project.
-- Asmita → Frontend (React)
-- Sounak → Blockchain (Solidity)
-- Preksha → Backend + ML (Express + FastAPI)
 
 ## Structure
 frontend/  contracts/  backend/  ml/  infra/  docs/
