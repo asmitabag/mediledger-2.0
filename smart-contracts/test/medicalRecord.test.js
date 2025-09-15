@@ -48,11 +48,11 @@ describe("MedicalRecord Contract", function () {
   beforeEach(async function () {
     // Deploy Verifier contract (or mock)
     try {
-      Verifier = await ethers.getContractFactory("Verifier");
+      Verifier = await ethers.getContractFactory("Groth16Verifier");
       verifier = await Verifier.deploy();
       await verifier.waitForDeployment();
     } catch (error) {
-      // If Verifier.sol doesn't exist, deploy a mock verifier
+      // If Groth16Verifier.sol doesn't exist, deploy a mock verifier
       console.log("Using mock verifier for tests");
       const MockVerifier = await ethers.getContractFactory("MockVerifier");
       verifier = await MockVerifier.deploy();
@@ -140,7 +140,7 @@ describe("MedicalRecord Contract", function () {
     });
 
     it("Should reject commitment from unauthorized account", async function () {
-      // Mock proof data
+      // Mock proof data with correct signature
       const mockProof = {
         a: ["1", "2"],
         b: [
@@ -169,14 +169,15 @@ describe("MedicalRecord Contract", function () {
           ["3", "4"],
         ],
         c: ["5", "6"],
-        input: [testPreimage, "123"], // Invalid length
+        input: [testPreimage, "123"], // Invalid length - should be exactly 1 element
       };
 
+      // This should fail at the parameter level before reaching the contract
       await expect(
         medicalRecord
           .connect(healthcare1)
           .commitRecord(mockProof.a, mockProof.b, mockProof.c, mockProof.input)
-      ).to.be.revertedWith("Invalid input length");
+      ).to.be.rejected;
     });
 
     it("Should generate and verify real proof if circuit is available", async function () {
@@ -397,6 +398,10 @@ describe("MedicalRecord Contract", function () {
         input: [testPreimage],
       };
 
+      // Get current block timestamp for accurate event testing
+      const currentBlock = await ethers.provider.getBlock("latest");
+      const expectedTimestamp = currentBlock.timestamp + 1;
+
       const tx = medicalRecord
         .connect(healthcare1)
         .commitRecord(mockProof.a, mockProof.b, mockProof.c, mockProof.input);
@@ -406,32 +411,102 @@ describe("MedicalRecord Contract", function () {
         .withArgs(
           healthcare1.address,
           ethers.zeroPadValue(ethers.toBeHex(mockProof.input[0]), 32),
-          await ethers.provider.getBlock("latest").then((b) => b.timestamp + 1)
+          expectedTimestamp
         );
     });
   });
+
+  describe("Edge Cases", function () {
+    beforeEach(async function () {
+      await medicalRecord.addHealthcareProvider(healthcare1.address);
+    });
+
+    it("Should handle zero commitment value", async function () {
+      const mockProof = {
+        a: ["1", "2"],
+        b: [
+          ["1", "2"],
+          ["3", "4"],
+        ],
+        c: ["5", "6"],
+        input: ["0"], // Zero commitment
+      };
+
+      const tx = await medicalRecord
+        .connect(healthcare1)
+        .commitRecord(mockProof.a, mockProof.b, mockProof.c, mockProof.input);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).to.equal(1);
+
+      // Verify commitment was stored
+      const commitments = await medicalRecord.getCommitments(healthcare1.address);
+      expect(commitments.length).to.equal(1);
+      expect(commitments[0]).to.equal(ethers.ZeroHash);
+    });
+
+    it("Should handle maximum uint256 commitment value", async function () {
+      const maxUint256 = ethers.MaxUint256;
+      
+      const mockProof = {
+        a: ["1", "2"],
+        b: [
+          ["1", "2"],
+          ["3", "4"],
+        ],
+        c: ["5", "6"],
+        input: [maxUint256.toString()],
+      };
+
+      const tx = await medicalRecord
+        .connect(healthcare1)
+        .commitRecord(mockProof.a, mockProof.b, mockProof.c, mockProof.input);
+
+      const receipt = await tx.wait();
+      expect(receipt.status).to.equal(1);
+
+      // Verify commitment was stored
+      const commitments = await medicalRecord.getCommitments(healthcare1.address);
+      expect(commitments.length).to.equal(1);
+      expect(commitments[0]).to.equal(
+        ethers.zeroPadValue(ethers.toBeHex(maxUint256), 32)
+      );
+    });
+
+    it("Should maintain separate commitment lists for different providers", async function () {
+      await medicalRecord.addHealthcareProvider(healthcare2.address);
+
+      const mockProof1 = {
+        a: ["1", "2"],
+        b: [["1", "2"], ["3", "4"]],
+        c: ["5", "6"],
+        input: [testPreimage],
+      };
+
+      const mockProof2 = {
+        a: ["1", "2"],
+        b: [["1", "2"], ["3", "4"]],
+        c: ["5", "6"],
+        input: [hashToField("0xdifferent")],
+      };
+
+      // Submit commitment from healthcare1
+      await medicalRecord
+        .connect(healthcare1)
+        .commitRecord(mockProof1.a, mockProof1.b, mockProof1.c, mockProof1.input);
+
+      // Submit commitment from healthcare2
+      await medicalRecord
+        .connect(healthcare2)
+        .commitRecord(mockProof2.a, mockProof2.b, mockProof2.c, mockProof2.input);
+
+      // Verify separate lists
+      const commitments1 = await medicalRecord.getCommitments(healthcare1.address);
+      const commitments2 = await medicalRecord.getCommitments(healthcare2.address);
+
+      expect(commitments1.length).to.equal(1);
+      expect(commitments2.length).to.equal(1);
+      expect(commitments1[0]).to.not.equal(commitments2[0]);
+    });
+  });
 });
-
-// Mock Verifier contract for testing when real Verifier.sol is not available
-const MockVerifierSource = `
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
-
-contract MockVerifier {
-    function verifyProof(
-        uint[2] memory a,
-        uint[2][2] memory b,
-        uint[2] memory c,
-        uint[] memory input
-    ) public pure returns (bool) {
-        // Mock verification - always return true for testing
-        return true;
-    }
-}
-`;
-
-// Helper to create MockVerifier contract factory
-async function createMockVerifierFactory() {
-  const MockVerifier = await ethers.getContractFactory("MockVerifier");
-  return MockVerifier;
-}

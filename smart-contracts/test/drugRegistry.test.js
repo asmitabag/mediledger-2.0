@@ -218,14 +218,15 @@ describe("DrugRegistry Contract", function () {
         .connect(manufacturer)
         .transferBatch(testBatchId, distributor.address, location);
 
-      // Check event emission
+      // Check event emission - corrected to expect 5 arguments
       await expect(tx)
         .to.emit(drugRegistry, "BatchTransferred")
         .withArgs(
           testBatchId,
           manufacturer.address,
           distributor.address,
-          location
+          location,
+          await ethers.provider.getBlock("latest").then(b => b.timestamp)
         );
 
       // Check ownership changed
@@ -354,10 +355,16 @@ describe("DrugRegistry Contract", function () {
         .connect(mlLogger)
         .logAnomalyCheck(testBatchId, predictionHash, anomalyType);
 
-      // Check event emission
+      // Check event emission - corrected to expect 5 arguments  
       await expect(tx)
         .to.emit(drugRegistry, "AnomalyLogged")
-        .withArgs(testBatchId, predictionHash, mlLogger.address, anomalyType);
+        .withArgs(
+          testBatchId, 
+          predictionHash, 
+          mlLogger.address, 
+          anomalyType,
+          await ethers.provider.getBlock("latest").then(b => b.timestamp)
+        );
 
       // Check anomaly log stored
       const anomalyLogs = await drugRegistry.getAnomalyLogs(testBatchId);

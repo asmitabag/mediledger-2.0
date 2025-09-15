@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Verifier.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+
+interface IVerifier {
+    function verifyProof(
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[1] memory input
+    ) external view returns (bool);
+}
 
 /**
  * @title MedicalRecord
@@ -15,63 +23,42 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract MedicalRecord is AccessControl {
     bytes32 public constant HEALTHCARE_PROVIDER_ROLE = keccak256("HEALTHCARE_PROVIDER_ROLE");
     
-    // ZK-SNARK verifier contract
-    Verifier public immutable verifier;
-    
-    // Mapping from healthcare provider to their committed records
+    IVerifier public immutable verifier;
     mapping(address => bytes32[]) public commitments;
-    
-    // Mapping to check if a commitment already exists
     mapping(bytes32 => bool) public commitmentExists;
-    
-    /**
-     * @dev Emitted when a medical record commitment is successfully stored
-     * @param provider Address of the healthcare provider
-     * @param commitment The commitment hash
-     * @param timestamp Block timestamp
-     */
-    event RecordCommitted(
-        address indexed provider,
-        bytes32 indexed commitment,
-        uint256 timestamp
-    );
-    
-    /**
-     * @dev Constructor to set up the verifier and admin role
-     * @param _verifier Address of the deployed Verifier contract
-     */
+
+    event RecordCommitted(address indexed provider, bytes32 indexed commitment, uint256 timestamp);
+
     constructor(address _verifier) {
         require(_verifier != address(0), "Verifier address cannot be zero");
-        verifier = Verifier(_verifier);
+        verifier = IVerifier(_verifier);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
-    
+
     /**
-     * @dev Commits a medical record using zero-knowledge proof
-     * @param a First component of the proof
-     * @param b Second component of the proof  
-     * @param c Third component of the proof
-     * @param input Public inputs (commitment)
+     * @dev Commit a medical record using zero-knowledge proof
+     * @param a First component of the zk-SNARK proof
+     * @param b Second component of the zk-SNARK proof
+     * @param c Third component of the zk-SNARK proof
+     * @param input Public input array (should contain exactly 1 element - the commitment)
      */
     function commitRecord(
         uint[2] memory a,
         uint[2][2] memory b,
         uint[2] memory c,
-        uint[] memory input
+        uint[1] memory input
     ) external onlyRole(HEALTHCARE_PROVIDER_ROLE) {
-        require(input.length == 1, "Invalid input length");
-        
         // Verify the zero-knowledge proof
         bool proofValid = verifier.verifyProof(a, b, c, input);
         require(proofValid, "Invalid zero-knowledge proof");
         
-        // Extract commitment from public inputs
+        // Extract commitment from public input
         bytes32 commitment = bytes32(input[0]);
         
         // Ensure commitment doesn't already exist
         require(!commitmentExists[commitment], "Commitment already exists");
         
-        // Store the commitment
+        // Store commitment
         commitments[msg.sender].push(commitment);
         commitmentExists[commitment] = true;
         

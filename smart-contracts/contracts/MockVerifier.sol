@@ -14,22 +14,22 @@ pragma solidity ^0.8.0;
 contract MockVerifier {
     /**
      * @dev Mock proof verification that always returns true
-     * @param a First component of the proof (ignored in mock)
-     * @param b Second component of the proof (ignored in mock)
-     * @param c Third component of the proof (ignored in mock)
-     * @param input Public inputs (ignored in mock)
+     * @param a First component of the proof (array of 2 uint256)
+     * @param b Second component of the proof (2x2 matrix of uint256)
+     * @param c Third component of the proof (array of 2 uint256)
+     * @param input Public inputs (array of 1 uint256 for the commitment)
      * @return Always returns true for testing
      */
     function verifyProof(
         uint[2] memory a,
         uint[2][2] memory b,
         uint[2] memory c,
-        uint[] memory input
+        uint[1] memory input
     ) public pure returns (bool) {
-        // Silence unused parameter warnings
-        a; b; c; input;
+        // Silence unused parameter warnings by referencing them
+        (a, b, c, input);
         
-        // Always return true for testing
+        // Always return true for testing purposes
         return true;
     }
 }

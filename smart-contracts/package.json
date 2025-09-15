@@ -1,33 +1,44 @@
 {
-  "name": "smart-contracts",
-  "version": "1.0.0",
-  "description": "",
+  "name": "medi-ledger",
+  "version": "2.0.0",
+  "description": "Blockchain-based medical record system with ZK proofs and IPFS storage",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npx hardhat test",
+    "build:circuit": "$(which circom) circuits/commitment.circom --r1cs --wasm --sym -o circom_build/",
+    "setup:powersoftau": "snarkjs powersoftau new bn128 12 circom_build/pot12_0000.ptau -v && snarkjs powersoftau contribute circom_build/pot12_0000.ptau circom_build/pot12_0001.ptau --name=\"First contribution\" -v && snarkjs powersoftau beacon circom_build/pot12_0001.ptau circom_build/pot12_beacon.ptau 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n=\"Final Beacon\" && snarkjs powersoftau prepare phase2 circom_build/pot12_beacon.ptau circom_build/pot12_final.ptau -v",
+    "setup:zkey": "npm run setup:powersoftau && snarkjs groth16 setup circom_build/commitment.r1cs circom_build/pot12_final.ptau zkeys/commitment_0000.zkey && snarkjs zkey contribute zkeys/commitment_0000.zkey zkeys/commitment_0001.zkey --name=\"First contribution\" -v && snarkjs zkey beacon zkeys/commitment_0001.zkey zkeys/commitment_final.zkey 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n=\"Final Beacon phase2\" && snarkjs zkey export solidityverifier zkeys/commitment_final.zkey contracts/Verifier.sol",
+    "compile": "npx hardhat compile",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
+    "node": "npx hardhat node",
+    "clean": "npx hardhat clean && rm -rf circom_build/* zkeys/* proof_data/*"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": [
+    "blockchain",
+    "medical-records",
+    "zero-knowledge",
+    "ipfs",
+    "ethereum"
+  ],
+  "author": "MediLedger Team",
+  "license": "MIT",
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
-    "@nomicfoundation/hardhat-ethers": "^3.1.0",
-    "@nomicfoundation/hardhat-ignition": "^0.15.13",
-    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.14",
-    "@nomicfoundation/hardhat-network-helpers": "^1.1.0",
-    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
-    "@nomicfoundation/hardhat-verify": "^2.1.1",
-    "@typechain/ethers-v6": "^0.5.1",
-    "@typechain/hardhat": "^9.1.0",
-    "chai": "^4.5.0",
-    "ethers": "^6.15.0",
-    "hardhat": "^2.26.3",
-    "hardhat-gas-reporter": "^2.3.0",
-    "solidity-coverage": "^0.8.16",
-    "typechain": "^8.3.2"
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "chai": "^4.3.10",
+    "hardhat": "^2.19.0",
+    "mocha": "^10.2.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.0.1",
+    "@pinata/sdk": "^2.1.0",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.9.0",
+    "snarkjs": "^0.7.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

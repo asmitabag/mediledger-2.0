@@ -16,19 +16,15 @@ include "../node_modules/circomlib/circuits/poseidon.circom";
  *   - commitment: Poseidon(preimage, salt)
  */
 template CommitmentCircuit() {
-    // Private inputs
-    signal private input preimage;
-    signal private input salt;
+    signal input preimage;
+    signal input salt;
     
-    // Public output
     signal output commitment;
     
-    // Instantiate Poseidon hash with 2 inputs
     component poseidon = Poseidon(2);
     poseidon.inputs[0] <== preimage;
     poseidon.inputs[1] <== salt;
     
-    // Output the commitment
     commitment <== poseidon.out;
 }
 
