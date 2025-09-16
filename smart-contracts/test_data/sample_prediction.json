@@ -1,0 +1,31 @@
+{
+  "batchId": "TEST_BATCH_001",
+  "timestamp": "2025-09-16T21:24:41.536Z",
+  "model": {
+    "name": "AnomalyDetector-v2.1",
+    "version": "2024.1",
+    "accuracy": 0.94
+  },
+  "prediction": {
+    "isAnomalous": true,
+    "anomalyScore": 0.9751344767059871,
+    "riskLevel": "low",
+    "confidence": 0.8657011644406626,
+    "factors": [
+      "temperature_deviation",
+      "humidity_anomaly",
+      "transport_irregularity"
+    ]
+  },
+  "sensorData": {
+    "temperature": 25.7,
+    "humidity": 45.2,
+    "location": "Warehouse B-7",
+    "deviceId": "SENSOR_001"
+  },
+  "metadata": {
+    "processingTime": "1.247s",
+    "dataPoints": 1440,
+    "algorithm": "ensemble_isolation_forest"
+  }
+}

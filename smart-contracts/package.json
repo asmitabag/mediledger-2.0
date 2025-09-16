@@ -9,6 +9,7 @@
     "setup:powersoftau": "snarkjs powersoftau new bn128 12 circom_build/pot12_0000.ptau -v && snarkjs powersoftau contribute circom_build/pot12_0000.ptau circom_build/pot12_0001.ptau --name=\"First contribution\" -v && snarkjs powersoftau beacon circom_build/pot12_0001.ptau circom_build/pot12_beacon.ptau 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n=\"Final Beacon\" && snarkjs powersoftau prepare phase2 circom_build/pot12_beacon.ptau circom_build/pot12_final.ptau -v",
     "setup:zkey": "npm run setup:powersoftau && snarkjs groth16 setup circom_build/commitment.r1cs circom_build/pot12_final.ptau zkeys/commitment_0000.zkey && snarkjs zkey contribute zkeys/commitment_0000.zkey zkeys/commitment_0001.zkey --name=\"First contribution\" -v && snarkjs zkey beacon zkeys/commitment_0001.zkey zkeys/commitment_final.zkey 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n=\"Final Beacon phase2\" && snarkjs zkey export solidityverifier zkeys/commitment_final.zkey contracts/Verifier.sol",
     "compile": "npx hardhat compile",
+    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
     "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
     "node": "npx hardhat node",
     "clean": "npx hardhat clean && rm -rf circom_build/* zkeys/* proof_data/*"

@@ -1,213 +1,204 @@
-#!/usr/bin/env node
+// scripts/submit_proof.js
+// Submit a generated proof to the MedicalRecord contract
 
+const { ethers } = require("hardhat");
 const fs = require("fs");
 const path = require("path");
-const { ethers } = require("ethers");
-const snarkjs = require("snarkjs");
-const {
-  formatProofForSolidity,
-  logWithTimestamp,
-} = require("./utils/proofUtils");
 
-require("dotenv").config();
+async function submitProof(proofFilePath, contractAddresses = null) {
+  console.log("MediLedger Proof Submission");
+  console.log("============================\n");
 
-/**
- * Submit zero-knowledge proof to MedicalRecord contract
- *
- * Usage: node scripts/submit_proof.js [proof-file] [public-file]
- */
-async function submitProof() {
+  // Load proof data
+  if (!fs.existsSync(proofFilePath)) {
+    throw new Error(`Proof file not found: ${proofFilePath}`);
+  }
+
+  const proofData = JSON.parse(fs.readFileSync(proofFilePath));
+  console.log(`Proof file: ${proofFilePath}`);
+  console.log(`Original file: ${proofData.filePath}`);
+  console.log(`Commitment: ${proofData.commitment}`);
+
+  // Get contract addresses
+  let addresses = contractAddresses;
+  if (!addresses) {
+    const addressesPath = path.join("deployed", "addresses.json");
+    if (!fs.existsSync(addressesPath)) {
+      throw new Error(
+        "Contract addresses not found. Please deploy contracts first:\n" +
+          "  npm run deploy:local"
+      );
+    }
+    addresses = JSON.parse(fs.readFileSync(addressesPath));
+  }
+
+  console.log(`\nUsing deployed contracts:`);
+  console.log(`  MedicalRecord: ${addresses.MedicalRecord}`);
+  console.log(`  Verifier: ${addresses.Verifier} (${addresses.verifierType})`);
+
+  // Get signers
+  const [signer] = await ethers.getSigners();
+  console.log(`\nSubmitting with account: ${signer.address}`);
+
+  // Get contract instance
+  const MedicalRecord = await ethers.getContractFactory("MedicalRecord");
+  const medicalRecord = MedicalRecord.attach(addresses.MedicalRecord);
+
+  // Check if signer has healthcare provider role
+  const HEALTHCARE_PROVIDER_ROLE = ethers.keccak256(
+    ethers.toUtf8Bytes("HEALTHCARE_PROVIDER_ROLE")
+  );
+
+  const hasRole = await medicalRecord.hasRole(
+    HEALTHCARE_PROVIDER_ROLE,
+    signer.address
+  );
+  if (!hasRole) {
+    console.log("⚠️  Warning: Signer does not have HEALTHCARE_PROVIDER_ROLE");
+    console.log("   This transaction will likely fail unless role is granted");
+  }
+
+  // Prepare proof parameters
+  const { a, b, c, input } = proofData.proof;
+
+  console.log("\nProof parameters:");
+  console.log(`  a: [${a.join(", ")}]`);
+  console.log(`  b: [[${b[0].join(", ")}], [${b[1].join(", ")}]]`);
+  console.log(`  c: [${c.join(", ")}]`);
+  console.log(`  input: [${input.join(", ")}]`);
+
   try {
-    // Parse command line arguments
-    const args = process.argv.slice(2);
-    const proofFile = args[0] || path.join("proof_data", "proof.json");
-    const publicFile = args[1] || path.join("proof_data", "public.json");
-
-    // Validate files exist
-    if (!fs.existsSync(proofFile)) {
-      throw new Error(`Proof file not found: ${proofFile}`);
-    }
-    if (!fs.existsSync(publicFile)) {
-      throw new Error(`Public signals file not found: ${publicFile}`);
-    }
-
-    logWithTimestamp("Starting proof submission...");
-
-    // Load proof and public signals
-    const proof = JSON.parse(fs.readFileSync(proofFile));
-    const publicSignals = JSON.parse(fs.readFileSync(publicFile));
-
-    logWithTimestamp(`Loaded proof from: ${proofFile}`);
-    logWithTimestamp(`Loaded public signals from: ${publicFile}`);
-
-    // Load contract addresses
-    const deployedPath = path.join("deployed", "addresses.json");
-    if (!fs.existsSync(deployedPath)) {
-      throw new Error(
-        `Deployed addresses not found: ${deployedPath}. Deploy contracts first.`
-      );
-    }
-
-    const addresses = JSON.parse(fs.readFileSync(deployedPath));
-    logWithTimestamp(`Using contract address: ${addresses.MedicalRecord}`);
-
-    // Set up provider and signer
-    const provider = new ethers.JsonRpcProvider(
-      process.env.SEPOLIA_RPC_URL || "http://localhost:8545"
-    );
-
-    if (!process.env.PRIVATE_KEY) {
-      throw new Error("PRIVATE_KEY not found in environment variables");
-    }
-
-    const signer = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    logWithTimestamp(`Using account: ${signer.address}`);
-
-    // Check account balance
-    const balance = await provider.getBalance(signer.address);
-    logWithTimestamp(`Account balance: ${ethers.formatEther(balance)} ETH`);
-
-    if (balance === 0n) {
-      throw new Error("Account has no ETH balance for transaction fees");
-    }
-
-    // Load contract ABI
-    const artifactPath = path.join(
-      "artifacts",
-      "contracts",
-      "MedicalRecord.sol",
-      "MedicalRecord.json"
-    );
-    if (!fs.existsSync(artifactPath)) {
-      throw new Error(
-        `Contract artifact not found: ${artifactPath}. Compile contracts first.`
-      );
-    }
-
-    const artifact = JSON.parse(fs.readFileSync(artifactPath));
-
-    // Create contract instance
-    const contract = new ethers.Contract(
-      addresses.MedicalRecord,
-      artifact.abi,
-      signer
-    );
-
-    // Format proof for Solidity
-    const solidityProof = formatProofForSolidity(proof, publicSignals);
-
-    logWithTimestamp("Formatted proof for Solidity:");
-    console.log(`  a: [${solidityProof.a.join(", ")}]`);
-    console.log(
-      `  b: [[${solidityProof.b[0].join(", ")}], [${solidityProof.b[1].join(
-        ", "
-      )}]]`
-    );
-    console.log(`  c: [${solidityProof.c.join(", ")}]`);
-    console.log(`  input: [${solidityProof.input.join(", ")}]`);
-
     // Estimate gas
-    logWithTimestamp("Estimating gas...");
-    const gasEstimate = await contract.commitRecord.estimateGas(
-      solidityProof.a,
-      solidityProof.b,
-      solidityProof.c,
-      solidityProof.input
+    console.log("\nEstimating gas...");
+    const gasEstimate = await medicalRecord.commitRecord.estimateGas(
+      a,
+      b,
+      c,
+      input
     );
-    logWithTimestamp(`Estimated gas: ${gasEstimate.toString()}`);
+    console.log(`  Estimated gas: ${gasEstimate.toString()}`);
 
     // Submit transaction
-    logWithTimestamp("Submitting proof to contract...");
-    const tx = await contract.commitRecord(
-      solidityProof.a,
-      solidityProof.b,
-      solidityProof.c,
-      solidityProof.input,
-      {
-        gasLimit: (gasEstimate * 120n) / 100n, // Add 20% buffer
-      }
-    );
-
-    logWithTimestamp(`Transaction submitted: ${tx.hash}`);
-    logWithTimestamp("Waiting for confirmation...");
+    console.log("\nSubmitting proof to blockchain...");
+    const tx = await medicalRecord.commitRecord(a, b, c, input);
+    console.log(`  Transaction hash: ${tx.hash}`);
 
     // Wait for confirmation
+    console.log("  Waiting for confirmation...");
     const receipt = await tx.wait();
+    console.log(`  Block number: ${receipt.blockNumber}`);
+    console.log(`  Gas used: ${receipt.gasUsed.toString()}`);
 
-    if (receipt.status === 1) {
-      logWithTimestamp("✅ Transaction confirmed!");
-
-      // Parse events
-      const logs = receipt.logs;
-      for (const log of logs) {
-        try {
-          const parsedLog = contract.interface.parseLog(log);
-          if (parsedLog && parsedLog.name === "RecordCommitted") {
-            console.log("\n=== RECORD COMMITTED EVENT ===");
-            console.log(`Provider: ${parsedLog.args.provider}`);
-            console.log(`Commitment: ${parsedLog.args.commitment}`);
-            console.log(
-              `Timestamp: ${new Date(
-                Number(parsedLog.args.timestamp) * 1000
-              ).toISOString()}`
-            );
-            console.log("===============================\n");
-          }
-        } catch (e) {
-          // Log might not be from our contract
-        }
+    // Parse events
+    const events = receipt.logs.filter((log) => {
+      try {
+        const parsed = medicalRecord.interface.parseLog(log);
+        return parsed && parsed.name === "RecordCommitted";
+      } catch {
+        return false;
       }
+    });
 
-      // Save transaction details
-      const txDetails = {
-        transactionHash: tx.hash,
-        blockNumber: receipt.blockNumber,
-        gasUsed: receipt.gasUsed.toString(),
-        commitment: publicSignals[0],
-        submitter: signer.address,
-        timestamp: new Date().toISOString(),
-      };
-
-      const txPath = path.join("proof_data", "transaction.json");
-      fs.writeFileSync(txPath, JSON.stringify(txDetails, null, 2));
-      logWithTimestamp(`Transaction details saved to: ${txPath}`);
-
-      console.log("\n=== SUBMISSION SUMMARY ===");
-      console.log(`Transaction Hash: ${tx.hash}`);
-      console.log(`Block Number: ${receipt.blockNumber}`);
-      console.log(`Gas Used: ${receipt.gasUsed.toString()}`);
-      console.log(`Commitment: ${publicSignals[0]}`);
-      console.log(`Contract Address: ${addresses.MedicalRecord}`);
-      console.log("===========================\n");
-    } else {
-      throw new Error("Transaction failed");
+    if (events.length > 0) {
+      const event = medicalRecord.interface.parseLog(events[0]);
+      console.log("\n✅ RecordCommitted event emitted:");
+      console.log(`  Provider: ${event.args.provider}`);
+      console.log(`  Commitment: ${event.args.commitment}`);
+      console.log(`  Timestamp: ${event.args.timestamp}`);
     }
+
+    // Verify the commitment was stored
+    console.log("\nVerifying storage...");
+    const commitments = await medicalRecord.getCommitments(signer.address);
+    const expectedCommitment = ethers.zeroPadValue(
+      ethers.toBeHex(proofData.commitment),
+      32
+    );
+
+    const commitmentExists = commitments.some((c) => c === expectedCommitment);
+    if (commitmentExists) {
+      console.log("✅ Commitment successfully stored on-chain");
+    } else {
+      console.log("❌ Commitment not found in storage");
+    }
+
+    // Save transaction record
+    const txRecord = {
+      proofFile: proofFilePath,
+      originalFile: proofData.filePath,
+      commitment: proofData.commitment,
+      transactionHash: tx.hash,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
+      timestamp: new Date().toISOString(),
+      contractAddress: addresses.MedicalRecord,
+      submitter: signer.address,
+    };
+
+    const txRecordPath = path.join("proof_data", `tx_${Date.now()}.json`);
+    fs.writeFileSync(txRecordPath, JSON.stringify(txRecord, null, 2));
+    console.log(`\nTransaction record saved: ${txRecordPath}`);
+
+    return {
+      success: true,
+      transactionHash: tx.hash,
+      commitment: proofData.commitment,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
+    };
   } catch (error) {
-    if (error.code === "CALL_EXCEPTION") {
+    console.error("\n❌ Proof submission failed:");
+    console.error(error.message);
+
+    if (error.message.includes("AccessControlUnauthorizedAccount")) {
       console.error(
-        `❌ Contract call failed: ${error.reason || error.message}`
+        "\nSolution: Grant HEALTHCARE_PROVIDER_ROLE to your account:"
       );
-      if (error.data) {
-        console.error(`Error data: ${error.data}`);
-      }
-    } else if (error.code === "INSUFFICIENT_FUNDS") {
-      console.error("❌ Insufficient funds for transaction");
-    } else {
-      console.error(`❌ Error submitting proof: ${error.message}`);
+      console.error(`  1. Get contract admin to run:`);
+      console.error(
+        `     await medicalRecord.addHealthcareProvider("${signer.address}")`
+      );
+      console.error(`  2. Or use an account that already has the role`);
+    } else if (error.message.includes("Invalid zero-knowledge proof")) {
+      console.error("\nThe zero-knowledge proof verification failed.");
+      console.error("This could be due to:");
+      console.error("  - Incorrect proof generation");
+      console.error("  - Mismatched circuit and verifier");
+      console.error("  - Corrupted proof data");
+    } else if (error.message.includes("Commitment already exists")) {
+      console.error("\nThis commitment has already been submitted.");
+      console.error("Each unique file can only be committed once.");
     }
-    process.exit(1);
+
+    throw error;
   }
 }
 
-// Run if called directly
+// CLI usage
 if (require.main === module) {
-  submitProof()
-    .then(() => {
-      logWithTimestamp("Proof submission completed successfully!");
-      process.exit(0);
+  const args = process.argv.slice(2);
+
+  if (args.length === 0) {
+    console.log("Usage: node scripts/submit_proof.js <proof-file-path>");
+    console.log("\nExample:");
+    console.log(
+      "  node scripts/submit_proof.js proof_data/proof_1638123456789.json"
+    );
+    console.log("\nOr generate and submit in one step:");
+    console.log("  node scripts/gen_proof.js test_data/sample.json");
+    console.log("  node scripts/submit_proof.js proof_data/proof_*.json");
+    process.exit(1);
+  }
+
+  submitProof(args[0])
+    .then((result) => {
+      console.log("\n🎉 Proof submitted successfully!");
+      console.log(`Transaction: ${result.transactionHash}`);
+      console.log(`Commitment: ${result.commitment}`);
+      console.log(`Gas used: ${result.gasUsed}`);
     })
     .catch((error) => {
-      console.error(`Fatal error: ${error.message}`);
+      console.error("\n💥 Proof submission failed");
       process.exit(1);
     });
 }
