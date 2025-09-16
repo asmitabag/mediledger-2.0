@@ -1,0 +1,11 @@
+{
+  "originalFile": "/home/user/Desktop/Projects/aws-solutions-architect-project/mediledger-2.0/smart-contracts/test_data/sensitive_record.json",
+  "fileName": "sensitive_record.json",
+  "cid": "Qmc4219751911f21ce96a390464317949ed8406e9befe8",
+  "encryptionKey": "3310a65ed7cbdf9600036f4f1d00c280daed060e664630fae6b1cbc3e951e8b9",
+  "iv": "66221fbb500bbbed858b2b9ae6a7cba8",
+  "uploadTimestamp": "2025-09-16T18:02:44.647Z",
+  "originalSize": 272,
+  "encryptedSize": 729,
+  "mock": true
+}

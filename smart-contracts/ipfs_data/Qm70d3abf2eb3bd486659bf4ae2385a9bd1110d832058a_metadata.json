@@ -1,0 +1,11 @@
+{
+  "originalFile": "/home/user/Desktop/Projects/aws-solutions-architect-project/mediledger-2.0/smart-contracts/test_data/sample_medical_record.json",
+  "fileName": "sample_medical_record.json",
+  "cid": "Qm70d3abf2eb3bd486659bf4ae2385a9bd1110d832058a",
+  "encryptionKey": "429f9f4d8dfb01e5ec92e0647d6773344d34f8851398652d7448cf5cb5cf66c3",
+  "iv": "187ced01898ee8c6ac8b94b6c5f7f76e",
+  "uploadTimestamp": "2025-09-16T18:21:08.439Z",
+  "originalSize": 264,
+  "encryptedSize": 702,
+  "mock": true
+}

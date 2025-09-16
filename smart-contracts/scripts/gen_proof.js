@@ -67,17 +67,71 @@ async function generateProof() {
 
     // Step 5: Generate witness
     logWithTimestamp("Generating witness...");
-    const wasmPath = path.join("circom_build", "commitment.wasm");
-    const r1csPath = path.join("circom_build", "commitment.r1cs");
+    
+    // Try multiple possible paths for the WASM file
+    const possibleWasmPaths = [
+      path.join("circom_build", "commitment_js", "commitment.wasm"),
+      path.join("circom_build", "commitment.wasm")
+    ];
+    
+    let wasmPath = null;
+    for (const possiblePath of possibleWasmPaths) {
+      if (fs.existsSync(possiblePath)) {
+        wasmPath = possiblePath;
+        break;
+      }
+    }
 
-    // Validate circuit files exist
-    if (!fs.existsSync(wasmPath)) {
+    if (!wasmPath) {
       throw new Error(
-        `Circuit WASM not found: ${wasmPath}. Run 'npm run build:circuit' first.`
+        `Circuit WASM not found in any expected location. Checked:\n${possibleWasmPaths.join('\n')}\nRun 'npm run build:circuit' first.`
       );
     }
 
-    const { witness } = await snarkjs.wtns.calculate(input, wasmPath);
+    logWithTimestamp(`Using WASM file: ${wasmPath}`);
+
+    // Try different approaches for witness generation
+    let witness;
+    
+    try {
+      // Method 1: Use snarkjs directly
+      const result = await snarkjs.wtns.calculate(input, wasmPath);
+      witness = result.witness;
+      logWithTimestamp("✅ Witness generated using snarkjs");
+    } catch (snarkjsError) {
+      logWithTimestamp(`⚠️ snarkjs witness generation failed: ${snarkjsError.message}`);
+      
+      try {
+        // Method 2: Try using the native witness generator
+        const { execSync } = require('child_process');
+        const witnessPath = path.join("proof_data", "witness.wtns");
+        
+        // Check if we're in the commitment_js directory structure
+        if (wasmPath.includes("commitment_js")) {
+          const commitmentJsDir = path.dirname(wasmPath);
+          const generateWitnessPath = path.join(commitmentJsDir, "generate_witness.js");
+          
+          if (fs.existsSync(generateWitnessPath)) {
+            logWithTimestamp("Trying native witness generator...");
+            
+            // Use the native witness generator
+            const command = `cd ${commitmentJsDir} && node generate_witness.js commitment.wasm ../../${inputPath} ../../${witnessPath}`;
+            execSync(command);
+            
+            // Read the generated witness file
+            witness = fs.readFileSync(witnessPath);
+            logWithTimestamp("✅ Witness generated using native generator");
+          } else {
+            throw new Error("Native witness generator not found");
+          }
+        } else {
+          throw new Error("Alternative witness generation not available");
+        }
+      } catch (nativeError) {
+        logWithTimestamp(`⚠️ Native witness generation failed: ${nativeError.message}`);
+        throw new Error(`Both snarkjs and native witness generation failed. Original snarkjs error: ${snarkjsError.message}`);
+      }
+    }
 
     // Step 6: Generate proof
     logWithTimestamp("Generating zero-knowledge proof...");
