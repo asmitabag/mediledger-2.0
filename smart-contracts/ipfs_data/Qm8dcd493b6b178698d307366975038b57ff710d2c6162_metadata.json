@@ -1,0 +1,11 @@
+{
+  "originalFile": "D:\\aws\\project-repo\\mediledger-2.0\\smart-contracts\\test_data\\sample_medical_record.json",
+  "fileName": "sample_medical_record.json",
+  "cid": "Qm8dcd493b6b178698d307366975038b57ff710d2c6162",
+  "encryptionKey": "16e408bdf5eeefae901977534d2627fdcd0abd3cc53a89df89b1cb13ad0bbedd",
+  "iv": "9b05e5a43dd529e3efbeef7f32f6507f",
+  "uploadTimestamp": "2025-09-16T19:01:31.791Z",
+  "originalSize": 264,
+  "encryptedSize": 702,
+  "mock": true
+}

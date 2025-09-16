@@ -1,0 +1,11 @@
+{
+  "originalFile": "D:\\aws\\project-repo\\mediledger-2.0\\smart-contracts\\test_data\\sensitive_record.json",
+  "fileName": "sensitive_record.json",
+  "cid": "Qm480de7f35167a77b9143639739f4eb58841386bde8d2",
+  "encryptionKey": "c596de8ef96819a9a17f2c5f9f44768249d17e4ca8c3a594f7bd202eeb8cd462",
+  "iv": "d07c40e2652e558a1a2cb0feb3c559f6",
+  "uploadTimestamp": "2025-09-16T19:01:32.322Z",
+  "originalSize": 272,
+  "encryptedSize": 729,
+  "mock": true
+}
