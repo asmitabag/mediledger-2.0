@@ -1,0 +1,11 @@
+{
+  "originalFile": "test_data/test_record.json",
+  "fileName": "test_record.json",
+  "cid": "Qme4e4cdeff4f4c425561b1785968f171cff537d79a937",
+  "encryptionKey": "efc12e175ff23c16c0e88e916ef4534cc496cba8e2b3affca14baefb1adbb448",
+  "iv": "284a90a659b5b8993f2e8a7d6c172a7c",
+  "uploadTimestamp": "2025-09-16T19:09:30.774Z",
+  "originalSize": 78,
+  "encryptedSize": 307,
+  "mock": true
+}

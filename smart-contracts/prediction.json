@@ -1,0 +1,42 @@
+{
+  "batchId": "BATCH001",
+  "timestamp": "2025-09-16T19:09:47.629Z",
+  "model": "DrugAnomalyDetector-v1.2.0",
+  "modelVersion": "1.2.0",
+  "prediction": {
+    "isAnomalous": true,
+    "anomalyScore": 0.87,
+    "anomalyTypes": [
+      "temperature_deviation",
+      "packaging_integrity"
+    ],
+    "riskLevel": "high"
+  },
+  "confidence": 0.92,
+  "features": {
+    "temperature_history": [
+      2.1,
+      2.3,
+      8.7,
+      2.2
+    ],
+    "humidity_levels": [
+      45.2,
+      44.8,
+      46.1,
+      45
+    ],
+    "packaging_score": 0.73,
+    "transport_duration_hours": 48.5
+  },
+  "metadata": {
+    "processing_time_ms": 234,
+    "data_quality_score": 0.94,
+    "sensor_readings_count": 1247
+  },
+  "recommendations": [
+    "Investigate temperature spike at timestamp 2024-01-15T14:32:00Z",
+    "Inspect packaging integrity",
+    "Consider batch quarantine pending investigation"
+  ]
+}
