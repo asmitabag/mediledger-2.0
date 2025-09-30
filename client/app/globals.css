@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 2 6 23;
+    --foreground: 248 250 252;
+    --card: 15 23 42;
+    --card-foreground: 248 250 252;
+    --popover: 15 23 42;
+    --popover-foreground: 248 250 252;
+    --primary: 147 51 234;
+    --primary-foreground: 248 250 252;
+    --secondary: 30 41 59;
+    --secondary-foreground: 248 250 252;
+    --muted: 30 41 59;
+    --muted-foreground: 148 163 184;
+    --accent: 34 211 238;
+    --accent-foreground: 15 23 42;
+    --destructive: 239 68 68;
+    --destructive-foreground: 248 250 252;
+    --border: 30 41 59;
+    --input: 30 41 59;
+    --ring: 147 51 234;
+    --radius: 0.5rem;
+    --chart-1: 147 51 234;
+    --chart-2: 34 211 238;
+    --chart-3: 16 185 129;
+    --chart-4: 245 158 11;
+    --chart-5: 239 68 68;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    cursor: none;
+  }
+}
+
+@layer utilities {
+  .cursor-none {
+    cursor: none !important;
+  }
+
+  .cursor-none * {
+    cursor: none !important;
+  }
+
+  .glassmorphism {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(30, 41, 59, 0.5);
+  }
+}
+
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
